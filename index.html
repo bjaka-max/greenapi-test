@@ -141,7 +141,12 @@ async function apiCall(method, body) {
     : { method: 'GET' };
   try {
     const res = await fetch(url, opts);
-    const data = await res.json();
+    const text = await res.text();
+    if (!res.ok) {
+      showError(`${res.status} ${res.statusText}\n${text}`);
+      return;
+    }
+    const data = JSON.parse(text);
     showResponse(data);
   } catch (e) {
     showError(e.message);
