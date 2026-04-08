@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp API Tester</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: monospace; padding: 20px; background: #f5f5f5; }
+
+  .container { display: flex; gap: 24px; max-width: 960px; }
+
+  .panel-left { flex: 0 0 380px; display: flex; flex-direction: column; gap: 16px; }
+  .panel-right { flex: 1; }
+
+  input, textarea, button {
+    font-family: monospace;
+    font-size: 14px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #999;
+    border-radius: 3px;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  button {
+    cursor: pointer;
+    background: #fff;
+    transition: background 0.15s;
+  }
+  button:hover { background: #eee; }
+  button:active { background: #ddd; }
+  button:disabled { opacity: 0.4; cursor: default; }
+
+  .section { display: flex; flex-direction: column; gap: 8px; }
+  .section + .section { margin-top: 8px; }
+
+  hr { border: none; border-top: 1px solid #ccc; margin: 4px 0; }
+
+  .response-label { font-style: italic; font-size: 15px; }
+  #response {
+    width: 100%;
+    min-height: 500px;
+    border: 1px solid #999;
+    border-radius: 3px;
+    padding: 10px;
+    font-family: monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: #fff;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="panel-left">
+    <div class="section">
+      <input type="text" id="idInstance" placeholder="idInstance">
+      <input type="text" id="apiTokenInstance" placeholder="ApiTokenInstance">
+    </div>
+
+    <div class="section">
+      <button id="btnGetSettings" onclick="getSettings()" disabled>getSettings</button>
+      <button id="btnGetState" onclick="getStateInstance()" disabled>getStateInstance</button>
+    </div>
+
+    <hr>
+
+    <div class="section">
+      <input type="text" id="sendPhone" placeholder="77771234567">
+      <textarea id="sendMessage" placeholder="Hello World!"></textarea>
+      <button id="btnSendMsg" onclick="sendMessage()" disabled>sendMessage</button>
+    </div>
+
+    <hr>
+
+    <div class="section">
+      <input type="text" id="filePhone" placeholder="77771234567">
+      <input type="text" id="fileUrl" placeholder="https://my.site.com/img/horse.png">
+      <button id="btnSendFile" onclick="sendFileByUrl()" disabled>sendFileByUrl</button>
+    </div>
+  </div>
+
+  <div class="panel-right">
+    <div class="response-label">Ответ:</div>
+    <div id="response"></div>
+  </div>
+</div>
+
+<script>
+function isValidId(v) { return /^\d{10}$/.test(v); }
+function isValidToken(v) { return /^[0-9a-f]{50}$/.test(v); }
+
+function updateButtons() {
+  const id = document.getElementById('idInstance').value.trim();
+  const token = document.getElementById('apiTokenInstance').value.trim();
+  const hasAuth = isValidId(id) && isValidToken(token);
+
+  document.getElementById('btnGetSettings').disabled = !hasAuth;
+  document.getElementById('btnGetState').disabled = !hasAuth;
+
+  const phone = document.getElementById('sendPhone').value.trim();
+  const msg = document.getElementById('sendMessage').value.trim();
+  document.getElementById('btnSendMsg').disabled = !(hasAuth && phone && msg);
+
+  const filePhone = document.getElementById('filePhone').value.trim();
+  const fileUrl = document.getElementById('fileUrl').value.trim();
+  document.getElementById('btnSendFile').disabled = !(hasAuth && filePhone && fileUrl);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('input, textarea').forEach(function(el) {
+    el.addEventListener('input', updateButtons);
+  });
+});
+
+function apiBase() {
+  const id = document.getElementById('idInstance').value.trim();
+  const token = document.getElementById('apiTokenInstance').value.trim();
+  return `https://${id.slice(0, 4)}.api.green-api.com/waInstance${id}`;
+}
+
+
+function apiToken() {
+  return document.getElementById('apiTokenInstance').value.trim();
+}
+
+function showResponse(data) {
+  document.getElementById('response').textContent = JSON.stringify(data, null, 2);
+}
+
+function showError(err) {
+  document.getElementById('response').textContent = 'Error: ' + err;
+}
+
+async function apiCall(method, body) {
+  const url = `${apiBase()}/${method}/${apiToken()}`;
+  const opts = body
+    ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+    : { method: 'GET' };
+  try {
+    const res = await fetch(url, opts);
+    const data = await res.json();
+    showResponse(data);
+  } catch (e) {
+    showError(e.message);
+  }
+}
+
+function getSettings() {
+  apiCall('getSettings');
+}
+
+function getStateInstance() {
+  apiCall('getStateInstance');
+}
+
+function sendMessage() {
+  const phone = document.getElementById('sendPhone').value.trim();
+  const message = document.getElementById('sendMessage').value;
+  apiCall('sendMessage', {
+    chatId: phone + '@c.us',
+    message: message
+  });
+}
+
+function sendFileByUrl() {
+  const phone = document.getElementById('filePhone').value.trim();
+  const url = document.getElementById('fileUrl').value.trim();
+  const filename = url.split('/').pop() || 'file';
+  apiCall('sendFileByUrl', {
+    chatId: phone + '@c.us',
+    urlFile: url,
+    fileName: filename
+  });
+}
+</script>
+
+</body>
+</html>
